@@ -24,3 +24,6 @@ logs/
 
 # uv
 uv.lock
+minio_sync_state.db
+minio_sync_state.db-shm
+minio_sync_state.db-wal

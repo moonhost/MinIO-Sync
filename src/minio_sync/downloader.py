@@ -38,9 +38,14 @@ def list_safe_new_files(
         f"{safe_time.strftime('%Y-%m-%dT%H:%M:%SZ')})"
     )
     objects = client.list_objects(bucket, prefix=prefix, recursive=True)
+    object_index = 0
     for obj in objects:
         if obj.last_modified is None:
             continue
+
+        logger.info(
+            f"列举文件 {object_index}: {obj.object_name}"
+        )
         obj_time = obj.last_modified
         if obj_time.tzinfo is None:
             obj_time = obj_time.replace(tzinfo=UTC)
@@ -132,7 +137,8 @@ def batch_download(
     fail_files: list[str] = []
     fuse_triggered = False
 
-    logger.info(f"开始批量下载 | 文件数: {len(file_infos)} | 线程数: {settings.max_threads}")
+    logger.info(
+        f"开始批量下载 | 文件数: {len(file_infos)} | 线程数: {settings.max_threads}")
 
     with ThreadPoolExecutor(max_workers=settings.max_threads) as executor:
         future_to_file = {
