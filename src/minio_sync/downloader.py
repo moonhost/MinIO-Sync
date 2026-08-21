@@ -38,14 +38,17 @@ def list_safe_new_files(
         f"{safe_time.strftime('%Y-%m-%dT%H:%M:%SZ')})"
     )
     objects = client.list_objects(bucket, prefix=prefix, recursive=True)
-    object_index = 0
+    scanned = 0
+    log_interval = 1000
     for obj in objects:
         if obj.last_modified is None:
             continue
 
-        logger.info(
-            f"列举文件 {object_index}: {obj.object_name}"
-        )
+        scanned += 1
+        logger.info(f"正在扫描：{scanned} : {obj.object_name}")
+        if scanned % log_interval == 0:
+            logger.info(f"已扫描 {scanned} 个对象，发现 {len(new_files)} 个新文件")
+
         obj_time = obj.last_modified
         if obj_time.tzinfo is None:
             obj_time = obj_time.replace(tzinfo=UTC)
@@ -58,7 +61,7 @@ def list_safe_new_files(
                     "etag": obj.etag,
                 }
             )
-    logger.info(f"列举完成，发现 {len(new_files)} 个新文件")
+    logger.info(f"列举完成 | 扫描: {scanned} | 新文件: {len(new_files)}")
     return new_files
 
 
