@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug minio-sync (module)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "minio_sync",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Debug minio-sync --check",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "minio_sync",
+            "args": ["--check"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
