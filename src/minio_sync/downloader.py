@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 
@@ -17,6 +18,25 @@ from minio_sync.config import Settings
 from minio_sync.store import FileInfo
 
 logger = logging.getLogger(__name__)
+
+_REPLACE_MAX_RETRIES = 5
+_REPLACE_RETRY_DELAY = 0.5
+
+
+def _retry_replace(src: str, dst: str) -> None:
+    for attempt in range(_REPLACE_MAX_RETRIES):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt < _REPLACE_MAX_RETRIES - 1:
+                logger.warning(
+                    f"文件被占用，{_REPLACE_RETRY_DELAY}s 后重试 "
+                    f"({attempt + 1}/{_REPLACE_MAX_RETRIES}): {dst}"
+                )
+                time.sleep(_REPLACE_RETRY_DELAY)
+            else:
+                raise
 
 
 def list_safe_new_files(
@@ -104,7 +124,14 @@ def download_file(
         local_dir = os.path.dirname(local_path)
         os.makedirs(local_dir, exist_ok=True)
         logger.info(f"开始下载: {file_path} ({obj_size} bytes)")
-        client.fget_object(bucket, file_path, tmp_path)
+        response = client.get_object(bucket, file_path)
+        try:
+            with open(tmp_path, "wb") as f:
+                for chunk in response.stream(amt=8192):
+                    f.write(chunk)
+        finally:
+            response.close()
+            response.release_conn()
 
         local_size = os.path.getsize(tmp_path)
         if local_size != obj_size:
@@ -116,7 +143,7 @@ def download_file(
             breaker.record_failure()
             return False, file_path
 
-        os.replace(tmp_path, local_path)
+        _retry_replace(tmp_path, local_path)
         logger.info(f"下载完成: {file_path} ({obj_size} bytes)")
         breaker.record_success()
         return True, file_path

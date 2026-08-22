@@ -77,8 +77,10 @@ def test_download_success_and_breaker_success(
     ok, _ = download_file(settings, breaker, settings.bucket, "a.jpg", expected_size=100)
     assert ok
     assert breaker.continuous_fail == 0
-    expected_dest = os.path.join(settings.local_sync_path, "a.jpg.downloading")
-    assert fake_client.downloaded == [(settings.bucket, "a.jpg", expected_dest)]
+    assert fake_client.downloaded == [(settings.bucket, "a.jpg", "a.jpg")]
+
+    local_file = os.path.join(settings.local_sync_path, "a.jpg")
+    assert os.path.exists(local_file)
 
 
 def test_download_size_mismatch_fails_and_cleans_tmp(

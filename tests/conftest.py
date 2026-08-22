@@ -67,6 +67,27 @@ class FakeObject:
         self.etag = etag
 
 
+class FakeResponse:
+    """模拟 minio get_object 返回的流式响应。"""
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+        self._offset = 0
+
+    def stream(self, amt: int = 8192) -> list[bytes]:
+        chunks: list[bytes] = []
+        while self._offset < len(self._data):
+            chunks.append(self._data[self._offset : self._offset + amt])
+            self._offset += amt
+        return chunks
+
+    def close(self) -> None:
+        pass
+
+    def release_conn(self) -> None:
+        pass
+
+
 class FakeMinioClient:
     """MinIO 客户端 mock：可配置对象列表、下载行为与失败模式。"""
 
@@ -98,6 +119,14 @@ class FakeMinioClient:
         obj = self.stat_object(bucket, file_path)
         Path(file_path_local).write_bytes(b"x" * obj.size)
         self.downloaded.append((bucket, file_path, file_path_local))
+
+    def get_object(self, bucket: str, file_path: str) -> FakeResponse:
+        if self.fail_all or file_path in self.fail_paths:
+            raise ConnectionError(f"download failed: {file_path}")
+        obj = self.stat_object(bucket, file_path)
+        data = b"x" * obj.size
+        self.downloaded.append((bucket, file_path, file_path))
+        return FakeResponse(data)
 
     def remove_object(self, bucket: str, file_path: str) -> None:
         self.removed.append(file_path)
